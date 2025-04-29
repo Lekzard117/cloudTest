@@ -10,7 +10,7 @@ on:
 env:
   APP_LOCATION: "/"                 # Directorio raíz
   HTML_FILE: "webcloud.html"        # Nombre de tu archivo HTML
-  APP_ARTIFACT_LOCATION: "public"   # Carpeta de salida (creada automáticamente)
+  APP_ARTIFACT_LOCATION: "public"   # Carpeta de salida
 
 permissions:
   contents: read
@@ -24,16 +24,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create dummy package.json
+      - name: Setup build environment
         run: |
+          # Crea package.json con el nombre correcto del archivo HTML
           echo '{
             "name": "static-html-app",
             "version": "1.0.0",
             "scripts": {
-              "build": "mkdir -p public && cp $HTML_FILE public/index.html && echo \"HTML copied successfully\""
+              "build": "mkdir -p public && cp webcloud.html public/index.html && echo \"HTML deployed successfully\""
             }
           }' > package.json
-          cat package.json  # Opcional: verifica el contenido
+          
+          # Verifica que el archivo HTML existe
+          if [ ! -f "$HTML_FILE" ]; then
+            echo "Error: $HTML_FILE not found!"
+            exit 1
+          fi
 
       - name: Build and Deploy
         uses: Azure/static-web-apps-deploy@v1
@@ -44,10 +50,11 @@ jobs:
           app_location: ${{ env.APP_LOCATION }}
           app_artifact_location: ${{ env.APP_ARTIFACT_LOCATION }}
           app_build_command: "npm run build"
-          output_location: "index.html"  # Azure buscará este archivo en la carpeta public
+          output_location: "index.html"
+          skip_app_build: false
 
   close_pull_request_job:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    if: github.event_name == 'pull_request' && github.event.action == 'closed"
     runs-on: ubuntu-latest
     steps:
       - uses: Azure/static-web-apps-deploy@v1
