@@ -8,9 +8,9 @@ on:
     branches: [ "main" ]
 
 env:
-  APP_LOCATION: "/webcloud.html"  # Ruta raíz donde está tu index.html
-  API_LOCATION: ""   # Vacío porque no tienes API
-  APP_ARTIFACT_LOCATION: ""  # Vacío porque no necesitas build
+  APP_LOCATION: "/"                 # Directorio raíz
+  HTML_FILE: "webcloud.html"        # Nombre de tu archivo HTML
+  APP_ARTIFACT_LOCATION: "public"   # Carpeta de salida (creada automáticamente)
 
 permissions:
   contents: read
@@ -21,21 +21,30 @@ jobs:
       contents: read
       pull-requests: write
     runs-on: ubuntu-latest
-    name: Deploy Static HTML
     steps:
       - uses: actions/checkout@v4
-        
-      - name: Deploy to Azure
+
+      - name: Create dummy package.json
+        run: |
+          echo '{
+            "name": "static-html-app",
+            "version": "1.0.0",
+            "scripts": {
+              "build": "mkdir -p public && cp $HTML_FILE public/index.html && echo \"HTML copied successfully\""
+            }
+          }' > package.json
+          cat package.json  # Opcional: verifica el contenido
+
+      - name: Build and Deploy
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: ${{ env.APP_LOCATION }}
-          api_location: ${{ env.API_LOCATION }}
           app_artifact_location: ${{ env.APP_ARTIFACT_LOCATION }}
-          app_build_command: "echo 'Skipping build for static content'"
-          skip_app_build: false  
+          app_build_command: "npm run build"
+          output_location: "index.html"  # Azure buscará este archivo en la carpeta public
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
